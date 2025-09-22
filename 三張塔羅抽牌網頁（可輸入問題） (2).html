@@ -3,89 +3,580 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>三張塔羅抽牌｜輸入問題 → 抽牌</title>
+  <title>三張塔羅抽牌｜輸入問題 → 抽牌 / 自行挑牌</title>
   <style>
-    body { margin:0; font-family:system-ui; background:#0b0f13; color:#fff; }
-    .wrap { max-width:900px; margin:0 auto; padding:20px; }
-    .cards { display:flex; justify-content:center; gap:12px; margin-top:16px; }
-    .card { background:#111; border:1px solid #333; border-radius:10px; padding:6px; width:30%; text-align:center; }
-    img { max-width:100%; border-radius:8px; }
-    .rev { color:#ff8a8a; font-size:14px; }
+    :root{ --bg:#0b0f13;--card:#121821;--ink:#eaf2ff;--sub:#9bb0c9;--accent:#7fd1ae;--muted:#2a3443;--warn:#ffb86b; --tileW:72px; --fanML:-40px; }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;letter-spacing:.2px;color:var(--ink);background:radial-gradient(1200px 800px at 70% -10%,#1b2431 0%,var(--bg) 60%);} 
+    .wrap{max-width:1100px;margin:0 auto;padding:28px}
+    .hero{display:flex;gap:20px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .title{font-weight:800;font-size:clamp(22px,4vw,34px)}
+    .subtitle{color:var(--sub);font-size:14px}
+    .panel{background:linear-gradient(180deg,#16202d, #0f141b);border:1px solid #243042;border-radius:16px;padding:18px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    textarea, input[type="url"], input[type="text"]{width:auto;max-width:100%;background:#0e141b;border:1px solid #1e2936;color:var(--ink);padding:10px 12px;border-radius:12px;font-size:14px;outline:none}
+    textarea{width:100%;font-size:16px;min-height:72px;resize:vertical}
+    .btn{appearance:none;border:0;border-radius:12px;padding:12px 16px;background:linear-gradient(180deg,#2a8b6b,#207e61);color:#fff;font-weight:700;cursor:pointer}
+    .btn.secondary{background:linear-gradient(180deg,#2b3444,#202837)}
+    .btn.ghost{background:transparent;border:1px solid #334155;color:#9fb3c7}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px}
+    .card{background:linear-gradient(180deg,#121a25,#0c1117);border:1px solid #1f2a37;border-radius:18px;padding:14px;min-height:180px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden}
+    .badge{position:absolute;top:10px;right:10px;border:1px solid #3a485e;color:#a9bfd8;border-radius:999px;padding:4px 10px;font-size:12px;backdrop-filter:blur(6px)}
+    .label{color:#9bb0c9;font-size:12px;letter-spacing:.6px;text-transform:uppercase}
+    .card-name{font-weight:800;font-size:18px}
+    .rev{color:#ffadad}
+    .meaning{color:#bcd1ea;font-size:13px;line-height:1.5}
+    .small{font-size:12px;color:#9db2c9}
+    .pill{display:inline-flex;align-items:center;gap:6px;background:#0e1621;border:1px solid #243042;color:#b2c7dd;border-radius:999px;padding:6px 10px;font-size:12px}
+    .divider{height:1px;background:#223043;margin:16px 0}
+    .hint{font-size:12px;color:#8aa2bd}
+    .toast{position:fixed;inset:auto 16px 16px auto;background:#0e161f;border:1px solid #274058;color:#cde2ff;padding:10px 12px;border-radius:10px;opacity:0;transform:translateY(8px);transition:all .25s}
+    .toast.show{opacity:1;transform:translateY(0)}
+    .stack{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .deck-count{color:#9db2c9;font-size:12px}
+    .ks{display:inline-flex;gap:8px;flex-wrap:wrap}
+    .ks .pill{cursor:pointer}
+    .muted{color:#9bb0c9}
+    .logo{font-weight:900;background:linear-gradient(90deg,#7fd1ae,#a6e3d5);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+    /* 互動選牌：預設網格 */
+    .spread{display:grid;grid-template-columns:repeat(13,1fr);gap:10px;margin-top:14px}
+    @media (max-width:900px){ .spread{grid-template-columns:repeat(9,1fr);} }
+    @media (max-width:640px){ .spread{grid-template-columns:repeat(6,1fr);} }
+
+    /* 密集橫排模式 */
+    .spread.dense{display:flex;gap:6px;overflow-x:auto;white-space:nowrap;padding-bottom:8px;border-radius:10px}
+    .spread.dense::-webkit-scrollbar{height:8px}
+    .spread.dense::-webkit-scrollbar-thumb{background:#263447;border-radius:6px}
+
+    /* 卡片尺寸 */
+    .tile{position:relative;aspect-ratio:62/110;perspective:800px;width:var(--tileW);min-width:var(--tileW)}
+    .spread.dense .tile{flex:0 0 auto}
+
+    .card3d{position:absolute;inset:0;border-radius:12px;transform-style:preserve-3d;transition:transform .5s}
+    .card3d.flip{transform:rotateY(180deg)}
+    .face{position:absolute;inset:0;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:8px;backface-visibility:hidden;border:1px solid #223043}
+    .back{background:repeating-linear-gradient(45deg,#0d1722,#0d1722 8px,#0f1c2a 8px,#0f1c2a 16px);box-shadow:inset 0 0 0 2px #1e2a3a;border:1px solid #2a3a4f}
+    .front{background:#0c1117;transform:rotateY(180deg)}
+    .front .name{font-size:11px;text-align:center;color:#cfe3ff;font-weight:700;line-height:1.2}
+    .front .minor{font-weight:600;color:#a8bfd8}
+    .pick-ind{position:absolute;top:6px;left:6px;background:#0e1621;border:1px solid #3a485e;border-radius:999px;font-size:10px;color:#b7ccea;padding:2px 6px;display:none}
+    .tile.selected .pick-ind{display:block}
+    .tile.disabled{opacity:.35;pointer-events:none}
+    .counter{font-size:12px;color:#9db2c9}
+
+    /* 攤牌（交疊）模式 */
+    .spread.fan{display:flex;gap:0;overflow-x:auto;white-space:nowrap;padding-bottom:8px}
+    .spread.fan .tile{flex:0 0 auto;margin-left:var(--fanML);z-index:0;transition:z-index .2s}
+    .spread.fan .tile:first-child{margin-left:0}
+    .spread.fan .tile:hover{z-index:10}
+    .spread.fan .tile:focus-within{z-index:10}
+
+    /* 卡片吸附（按張對齊） */
+    .spread.snap{scroll-snap-type:x mandatory}
+    .spread.snap .tile{scroll-snap-align:start}
+
+    /* 牌面圖樣式 */
+    .tile-img{width:100%;height:100%;object-fit:cover;border-radius:10px;display:block}
+    .result-img{width:100%;max-height:220px;object-fit:contain;border-radius:12px;border:1px solid #223043;background:#0b1117;display:block}
+    .revimg{transform:rotate(180deg)}
+    .imgbox{margin-top:4px}
+
+    /* 手機最佳化 */
+    @media (max-width:640px){
+      .wrap{padding:16px}
+      .hero{flex-direction:column;align-items:flex-start;gap:8px}
+      #layoutGrid{grid-template-columns:1fr !important}
+      .cards{grid-template-columns:1fr}
+      .card{min-height:140px}
+      .panel{padding:14px}
+      .btn{padding:10px 12px}
+      .pill{padding:6px 8px}
+      :root{ --tileW:64px; --fanML:-36px; }
+      .front .name{font-size:10px}
+    }
+
+    /* 針對極小螢幕（<=360px）再縮 */
+    @media (max-width:360px){
+      :root{ --tileW:58px; --fanML:-30px; }
+      .title{font-size:20px}
+    }
+
+    /* 測試面板（僅在 ?test=1 顯示） */
+    #testPanel{display:none;margin-top:16px}
+    #testPanel.show{display:block}
+    .test-pass{color:#7fd1ae}
+    .test-fail{color:#ffb7b7}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>三張塔羅抽牌</h1>
-    <textarea id="question" placeholder="輸入你的問題" style="width:100%;min-height:60px;"></textarea>
-    <br><br>
-    <button id="drawBtn">抽三張</button>
-    <button id="copyBtn" disabled>複製結果</button>
-    <div class="cards" id="cards"></div>
+    <div class="hero">
+      <div>
+        <div class="title"><span class="logo">Three-Card Tarot</span>｜輸入問題 → 抽三張（支援自行挑牌）</div>
+        <div class="subtitle">Thoth 牌系（Wands/Cups/Swords/Disks；宮廷：Knight/Queen/Prince/Princess）。可切換逆位、支援種子鎖定。</div>
+      </div>
+      <div class="stack"><span class="deck-count" id="deckCount">牌組：78 張</span><button id="resetBtn" class="btn ghost">重置</button></div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div id="layoutGrid" style="display:grid;grid-template-columns:1.2fr .8fr;gap:16px;align-items:start">
+        <div>
+          <label class="label">你的問題 / 主題</label>
+          <textarea id="question" placeholder="例如：我該如何規劃接下來三個月的健康與學業？
+（保持具體、可行與聚焦）"></textarea>
+          <div class="hint" style="margin-top:6px">建議把三張位階理解為「過去 / 現在 / 未來」或「狀況 / 阻礙 / 建議」。</div>
+        </div>
+        <div class="panel" style="padding:12px">
+          <div class="row">
+            <label class="pill"><input type="checkbox" id="useReverse" checked style="accent-color:#67c6a5;transform:translateY(1px);"> 含逆位</label>
+            <label class="pill"><input type="checkbox" id="lockSeed" style="accent-color:#67c6a5;transform:translateY(1px);"> 鎖定結果（同題重抽一致）</label>
+            <label class="pill"><input type="checkbox" id="denseToggle" checked style="accent-color:#67c6a5;transform:translateY(1px);"> 密集橫排</label>
+            <label class="pill"><input type="checkbox" id="fanToggle" checked style="accent-color:#67c6a5;transform:translateY(1px);"> 攤牌重疊</label>
+            <label class="pill"><input type="checkbox" id="snapToggle" checked style="accent-color:#67c6a5;transform:translateY(1px);"> 卡片吸附</label>
+            <label class="pill"><input type="checkbox" id="showImg" style="accent-color:#67c6a5;transform:translateY(1px);"> 顯示牌面圖</label>
+          </div>
+          <div class="divider"></div>
+          <div class="row" style="align-items:center">
+            <button id="drawBtn" class="btn">隨機抽三張</button>
+            <button id="copyBtn" class="btn secondary" disabled>複製（多行）</button>
+            <button id="copyBtn1L" class="btn secondary" disabled>複製（單行）</button>
+            <label class="pill" style="margin-left:auto">尺寸
+              <input id="sizeRange" type="range" min="56" max="96" value="72" step="4" style="vertical-align:middle">
+            </label>
+            <label class="pill">重疊
+              <input id="overlapRange" type="range" min="0" max="80" value="40" step="2" style="vertical-align:middle">
+            </label>
+          </div>
+          <div class="row" style="align-items:center;gap:8px;margin-top:10px">
+            <span class="pill" style="gap:8px;background:transparent;border-color:#2a394d">圖片目錄 URL</span>
+            <input id="imgBase" type="url" placeholder="例如：https://cdn.example.com/thoth" style="flex:1;min-width:220px">
+          </div>
+          <div class="hint" style="margin-top:6px">
+            命名規則（索引命名）：<code>major/00.jpg ~ 21.jpg</code>；小牌：<code>minor/{wands|cups|swords|disks}/{ace|two|...|ten|knight|queen|prince|princess}.jpg</code>。
+            我們不內建影像，請使用自己擁有授權的托特牌圖檔。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 結果區 -->
+    <div class="cards" id="cards">
+      <div class="card"><span class="badge">位置一</span><div class="label">過去 / 背景</div><div class="imgbox"></div><div class="card-name muted">—</div><div class="meaning"></div></div>
+      <div class="card"><span class="badge">位置二</span><div class="label">現在 / 核心</div><div class="imgbox"></div><div class="card-name muted">—</div><div class="meaning"></div></div>
+      <div class="card"><span class="badge">位置三</span><div class="label">未來 / 建議</div><div class="imgbox"></div><div class="card-name muted">—</div><div class="meaning"></div></div>
+    </div>
+
+    <!-- 互動挑牌區 -->
+    <div class="panel" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div>
+          <div class="label">互動式挑牌｜請從下方牌背中點選三張</div>
+          <div class="hint">如有勾選「鎖定結果」，同一題的牌背排列會固定，方便回顧。同時會根據設定隨機決定是否為逆位。</div>
+        </div>
+        <div class="counter" id="pickCounter">已選 0 / 3</div>
+      </div>
+      <div id="spread" class="spread dense fan snap" aria-label="挑選三張牌"></div>
+      <div class="row" style="margin-top:10px;align-items:center">
+        <button id="reshuffleBtn" class="btn ghost">重新洗牌</button>
+        <button id="clearPickBtn" class="btn ghost">清除選擇</button>
+      </div>
+    </div>
+
+    <!-- 測試面板（僅在 ?test=1 顯示） -->
+    <div id="testPanel" class="panel">
+      <div class="label">自動測試結果</div>
+      <ul id="testList" class="small"></ul>
+    </div>
+
+    <p class="small" style="margin-top:12px">© 2025 Tarot Helper · Thoth 名稱格式（Major + Wands/Cups/Swords/Disks；宮廷：Knight/Queen/Prince/Princess）。此頁面不儲存任何資料。</p>
   </div>
 
-<script>
-const DECK = [
-  '00-fool','01-magus','02-priestess','03-empress','04-emperor','05-hierophant','06-lovers','07-chariot','08-adjustment','09-hermit','10-fortune','11-lust','12-hangedman','13-death','14-art','15-devil','16-tower','17-star','18-moon','19-sun','20-aeon','21-universe',
-  'wands-ace','wands-two','wands-three','wands-four','wands-five','wands-six','wands-seven','wands-eight','wands-nine','wands-ten','wands-knight','wands-queen','wands-prince','wands-princess',
-  'cups-ace','cups-two','cups-three','cups-four','cups-five','cups-six','cups-seven','cups-eight','cups-nine','cups-ten','cups-knight','cups-queen','cups-prince','cups-princess',
-  'swords-ace','swords-two','swords-three','swords-four','swords-five','swords-six','swords-seven','swords-eight','swords-nine','swords-ten','swords-knight','swords-queen','swords-prince','swords-princess',
-  'disks-ace','disks-two','disks-three','disks-four','disks-five','disks-six','disks-seven','disks-eight','disks-nine','disks-ten','disks-knight','disks-queen','disks-prince','disks-princess'
-];
+  <div class="toast" id="toast">已複製到剪貼簿！</div>
 
-function pickThree(){
-  const tmp=[...DECK];
-  const res=[];
-  for(let i=0;i<3;i++){
-    const idx=Math.floor(Math.random()*tmp.length);
-    const name=tmp.splice(idx,1)[0];
-    const reversed=Math.random()<0.5;
-    res.push({name,reversed});
+<script>
+// ---- 牌庫定義 ----
+const MAJOR = [
+  '0 The Fool / 愚者','I The Magus / 魔術師','II The Priestess / 女祭司','III The Empress / 女皇',
+  'IV The Emperor / 皇帝','V The Hierophant / 教宗','VI The Lovers / 戀人','VII The Chariot / 戰車',
+  'VIII Adjustment / 平衡','IX The Hermit / 隱者','X Fortune / 命運之輪','XI Lust / 力量',
+  'XII The Hanged Man / 吊人','XIII Death / 死神','XIV Art / 藝術','XV The Devil / 惡魔',
+  'XVI The Tower / 高塔','XVII The Star / 星星','XVIII The Moon / 月亮','XIX The Sun / 太陽',
+  'XX The Aeon / 新紀元','XXI The Universe / 宇宙'
+];
+const SUITS = ['Wands/權杖','Cups/聖杯','Swords/寶劍','Disks/錢幣'];
+const PIPS = ['Ace/一','Two/二','Three/三','Four/四','Five/五','Six/六','Seven/七','Eight/八','Nine/九','Ten/十'];
+const COURTS = ['Knight/騎士','Queen/皇后','Prince/王子','Princess/公主'];
+function buildDeck(){
+  const deck=[]; MAJOR.forEach(t=>deck.push(t));
+  SUITS.forEach(s=>{ PIPS.forEach(p=>deck.push(`${p} of ${s}`)); COURTS.forEach(c=>deck.push(`${c} of ${s}`)); });
+  return deck; // 78
+}
+const DECK = buildDeck();
+
+// ---- 大牌提示 ----
+const HINT = {
+  '0 The Fool / 愚者':'新開始、信任直覺、輕裝上路','I The Magus / 魔術師':'專注、溝通、資源整合','II The Priestess / 女祭司':'內觀、靜默、潛意識','III The Empress / 女皇':'滋養、創造、關係與美感','IV The Emperor / 皇帝':'結構、界線、執行力','V The Hierophant / 教宗':'價值、老師、傳承','VI The Lovers / 戀人':'選擇、契合、整合對立','VII The Chariot / 戰車':'專注前進、勝利、掌控','VIII Adjustment / 平衡':'正直、公平、調整','IX The Hermit / 隱者':'獨處、研究、修煉','X Fortune / 命運之輪':'轉運、節點、隨機機會','XI Lust / 力量':'生命力、激情、驅動','XII The Hanged Man / 吊人':'換位、犧牲、停頓中覺察','XIII Death / 死神':'結束與再生、蛻變','XIV Art / 藝術':'調和、煉金、整合','XV The Devil / 惡魔':'執著、慾望、束縛','XVI The Tower / 高塔':'突變、瓦解、覺醒','XVII The Star / 星星':'療癒、希望、流動','XVIII The Moon / 月亮':'迷霧、直覺、夜行','XIX The Sun / 太陽':'明朗、成功、活力','XX The Aeon / 新紀元':'審視、重生、新章節','XXI The Universe / 宇宙':'整體、完成、落實'
+};
+
+// ---- 穩定亂數（種子） ----
+function xmur3(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19;}return function(){h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);return (h^h>>>16)>>>0};}
+function mulberry32(a){return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296}}
+function rngFromSeed(seedText){ if(!seedText) return Math.random; const seed=xmur3(seedText)(); return mulberry32(seed); }
+
+// ---- DOM ----
+const qEl = document.getElementById('question');
+const drawBtn = document.getElementById('drawBtn');
+const copyBtn = document.getElementById('copyBtn');
+const copyBtn1L = document.getElementById('copyBtn1L');
+const cardsEl = document.getElementById('cards');
+const useReverseEl = document.getElementById('useReverse');
+const lockSeedEl = document.getElementById('lockSeed');
+const denseToggleEl = document.getElementById('denseToggle');
+const fanToggleEl = document.getElementById('fanToggle');
+const snapToggleEl = document.getElementById('snapToggle');
+const showImgEl = document.getElementById('showImg');
+const imgBaseEl = document.getElementById('imgBase');
+const sizeRangeEl = document.getElementById('sizeRange');
+const overlapRangeEl = document.getElementById('overlapRange');
+const resetBtn = document.getElementById('resetBtn');
+const reshuffleBtn = document.getElementById('reshuffleBtn');
+const clearPickBtn = document.getElementById('clearPickBtn');
+const spreadEl = document.getElementById('spread');
+const pickCounter = document.getElementById('pickCounter');
+const toast = document.getElementById('toast');
+const deckCount = document.getElementById('deckCount');
+const testPanel = document.getElementById('testPanel');
+const testList = document.getElementById('testList');
+const layoutGrid = document.getElementById('layoutGrid');
+
+// ---- 狀態 ----
+let currentSeed = '';
+let order = [];// 牌背排列索引
+let picks = [];// 使用者實際抽到的 {name,reversed}
+const IMG = { enabled:false, base:'' };
+
+// ---- 工具 ----
+function trimSlash(s){ return (s||'').replace(/\/$/, ''); }
+function isMajorName(name){ return !name.includes(' of '); }
+function pad2(n){ return (n<10? '0'+n : ''+n); }
+function engPart(s){ return (s.split('/')[0]||'').toLowerCase(); }
+function imgSrcFor(name){
+  if(!IMG.enabled || !IMG.base) return '';
+  const base = trimSlash(IMG.base);
+  if(isMajorName(name)){
+    const idx = MAJOR.indexOf(name);
+    if(idx<0) return '';
+    return `${base}/major/${pad2(idx)}.jpg`;
+  } else {
+    const [rank,suit] = name.split(' of ');
+    const suitEn = engPart(suit);
+    const rankEn = engPart(rank);
+    return `${base}/minor/${suitEn}/${rankEn}.jpg`;
   }
-  return res;
+}
+function makeCardImg(name, reversed, cls){
+  const img = document.createElement('img');
+  img.className = ((cls||'')) + (reversed? ' revimg' : '');
+  img.alt = name + (reversed? '（逆位）' : '');
+  img.src = imgSrcFor(name);
+  img.decoding = 'async';
+  img.loading = 'lazy';
+  img.addEventListener('error', ()=>{
+    const fallback = document.createElement('div');
+    fallback.className = 'name';
+    fallback.innerHTML = formatName(name) + (reversed? ' <span class="rev">（逆位）</span>' : '');
+    img.replaceWith(fallback);
+  });
+  return img;
 }
 
-function renderResult(cards){
-  const container=document.getElementById('cards');
-  container.innerHTML='';
-  cards.forEach(c=>{
-    const div=document.createElement('div');
-    div.className='card';
-    const img=document.createElement('img');
-    img.src=`thoth/${c.name}.jpg`;
-    img.alt=c.name;
-    div.appendChild(img);
-    if(c.reversed){
-      const span=document.createElement('div');
-      span.className='rev';
-      span.textContent='逆位';
-      div.appendChild(span);
+function shuffleOrder(){
+  const text = lockSeedEl.checked ? (qEl.value.trim() || 'default-seed') : (Date.now()+Math.random()).toString();
+  currentSeed = text;
+  const rand = rngFromSeed(text);
+  order = [...DECK.keys()].sort(()=> rand() - 0.5); // 穩定洗牌
+}
+
+function renderSpread(){
+  spreadEl.innerHTML = '';
+  const rand = rngFromSeed(currentSeed);
+  order.forEach((idx)=>{
+    const name = DECK[idx];
+    const tile = document.createElement('button');
+    tile.className = 'tile';
+    tile.setAttribute('aria-label','挑選一張牌');
+    tile.innerHTML = `
+      <div class="card3d">
+        <div class="face back"></div>
+        <div class="face front"><div class="name">${formatName(name)}</div></div>
+      </div>
+      <span class="pick-ind">第 <b class="n">1</b> 張</span>
+    `;
+    // 若啟用圖片，預先在正面放入對應圖片（未決定逆位，故不旋轉）
+    if(IMG.enabled && IMG.base){
+      const front = tile.querySelector('.front');
+      front.innerHTML='';
+      front.appendChild(makeCardImg(name, false, 'tile-img'));
     }
-    container.appendChild(div);
+    // 點擊邏輯
+    tile.addEventListener('click',()=>{
+      if(picks.length>=3) return; // 最多三張
+      const reversed = useReverseEl.checked ? rand() < 0.5 : false; // 依種子決定，確保可重現
+      picks.push({name, reversed});
+      // 視覺翻牌
+      const front = tile.querySelector('.front');
+      if(IMG.enabled && IMG.base){
+        front.innerHTML='';
+        front.appendChild(makeCardImg(name, reversed, 'tile-img'));
+      }
+      tile.querySelector('.card3d').classList.add('flip');
+      tile.classList.add('selected');
+      tile.querySelector('.n').textContent = picks.length;
+      tile.classList.add('disabled');
+      updateResults();
+    });
+    spreadEl.appendChild(tile);
   });
 }
 
-const drawBtn=document.getElementById('drawBtn');
-const copyBtn=document.getElementById('copyBtn');
-let lastDraw=null;
+function updateResults(){
+  const pos = ['過去 / 背景','現在 / 核心','未來 / 建議'];
+  [...cardsEl.children].forEach((c,i)=>{
+    const it = picks[i];
+    const nm = c.querySelector('.card-name');
+    const mn = c.querySelector('.meaning');
+    const box = c.querySelector('.imgbox');
+    c.querySelector('.label').textContent = pos[i];
+    box.innerHTML = '';
+    if(!it){ nm.textContent='—'; nm.classList.add('muted'); mn.textContent=''; return; }
+    nm.classList.remove('muted');
+    nm.innerHTML = `${it.name}${it.reversed? ' <span class=\"rev\">（逆位）</span>':''}`;
+    if(IMG.enabled && IMG.base){ box.appendChild(makeCardImg(it.name, it.reversed, 'result-img')); }
+    const hint = HINT[it.name] || '';
+    mn.textContent = it && it.reversed ? (hint? `${hint}（反向／內在面）` : '') : hint;
+  });
+  pickCounter.textContent = `已選 ${picks.length} / 3`;
+  const done = picks.length === 3;
+  copyBtn.disabled = !done;
+  copyBtn1L.disabled = !done;
+  if(done){ window._last = {question:qEl.value.trim(), three:[...picks]}; }
+}
+
+function formatName(name){
+  // 換行優化（小螢幕可讀性）
+  if(name.includes(' of ')){
+    const [p,s] = name.split(' of ');
+    return `<span class=\"minor\">${p}</span><br/>of ${s}`;
+  }
+  return name;
+}
+
+// ---- 隨機抽三張（保留原功能） ----
+function pickThree({seedText, allowReverse}){
+  let rand = rngFromSeed(seedText);
+  const deck = [...DECK];
+  const three = [];
+  for(let i=0;i<3;i++){
+    const idx = Math.floor(rand()*deck.length);
+    const name = deck.splice(idx,1)[0];
+    const reversed = allowReverse ? rand() < 0.5 : false;
+    three.push({name, reversed});
+  }
+  return three;
+}
+
+// ---- 工具：安全換行連接 & 文本組裝 ----
+function joinLines(arr){ return arr.join('\n'); } // 使用 \n 作為換行符
+function buildResultLines(){
+  if(!window._last) return '';
+  const lines = [];
+  lines.push('【三張塔羅抽牌】');
+  lines.push('問題：' + (window._last.question || '（未填）'));
+  const pos = ['① 過去/背景','② 現在/核心','③ 未來/建議'];
+  window._last.three.forEach((c,i)=>{ lines.push(`${pos[i]}：${c.name}${c.reversed?'（逆位）':''}`); });
+  return joinLines(lines);
+}
+function buildResultOneLine(){
+  if(!window._last) return '';
+  const sep = '｜';
+  const pos = ['① 過去/背景','② 現在/核心','③ 未來/建議'];
+  const parts = [
+    '【三張塔羅抽牌】',
+    '問題：' + (window._last.question || '（未填）'),
+    ...window._last.three.map((c,i)=> `${pos[i]}：${c.name}${c.reversed?'（逆位）':''}`)
+  ];
+  return parts.join(sep);
+}
+
+// ---- 事件 ----
+resetBtn.addEventListener('click',()=>{ qEl.value=''; drawReset(); });
+reshuffleBtn.addEventListener('click',()=>{ initSpread(); });
+clearPickBtn.addEventListener('click',()=>{ picks=[]; updateResults(); renderSpread(); });
 
 drawBtn.addEventListener('click',()=>{
-  lastDraw=pickThree();
-  renderResult(lastDraw);
-  copyBtn.disabled=false;
+  const text = lockSeedEl.checked ? (qEl.value.trim()||'default-seed') : '';
+  const three = pickThree({seedText:text, allowReverse:useReverseEl.checked});
+  picks = [...three];
+  updateResults();
 });
 
-copyBtn.addEventListener('click',async()=>{
-  if(!lastDraw) return;
-  const q=document.getElementById('question').value.trim();
-  let lines=[];
-  lines.push('【三張塔羅抽牌】');
-  lines.push('問題：'+(q||'（未填）'));
-  lastDraw.forEach((c,i)=>{
-    lines.push(`第${i+1}張：${c.name}${c.reversed?'（逆位）':''}`);
-  });
-  const txt=lines.join('\n');
-  try{await navigator.clipboard.writeText(txt);alert('已複製');}catch(e){alert('複製失敗');}
+copyBtn.addEventListener('click', async ()=>{
+  if(!window._last){return}
+  const txt = buildResultLines();
+  try{ await navigator.clipboard.writeText(txt); showToast('已複製（多行）到剪貼簿！'); }
+  catch(e){ showToast('複製失敗，請手動選取文字'); }
 });
+copyBtn1L.addEventListener('click', async ()=>{
+  if(!window._last){return}
+  const txt = buildResultOneLine();
+  try{ await navigator.clipboard.writeText(txt); showToast('已複製（單行）到剪貼簿！'); }
+  catch(e){ showToast('複製失敗，請手動選取文字'); }
+});
+
+function showToast(msg){ toast.textContent = msg; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),1600); }
+
+function drawReset(){
+  picks = [];
+  updateResults();
+  initSpread();
+}
+
+function initSpread(){
+  shuffleOrder();
+  renderSpread();
+  applyDenseMode();
+  applyFanMode();
+  applySnapMode();
+  applyTileSize();
+  applyOverlap();
+  updateResponsiveState();
+}
+
+function applyDenseMode(){ spreadEl.classList.toggle('dense', !!denseToggleEl?.checked); }
+function applyFanMode(){ spreadEl.classList.toggle('fan', !!fanToggleEl?.checked); }
+function applySnapMode(){ spreadEl.classList.toggle('snap', !!snapToggleEl?.checked); }
+function applyTileSize(){ if(sizeRangeEl) document.documentElement.style.setProperty('--tileW', sizeRangeEl.value + 'px'); }
+function applyOverlap(){ if(overlapRangeEl){ const px = -1 * parseInt(overlapRangeEl.value || '40', 10); document.documentElement.style.setProperty('--fanML', px + 'px'); } }
+
+// 圖片設定與監聽
+function applyImgSetting(){ IMG.enabled = !!showImgEl?.checked; IMG.base = imgBaseEl?.value.trim() || ''; }
+showImgEl?.addEventListener('change', ()=>{ applyImgSetting(); renderSpread(); updateResults(); });
+imgBaseEl?.addEventListener('input', ()=>{ applyImgSetting(); renderSpread(); updateResults(); });
+
+// ---- 簡易自動化測試（?test=1 啟用） ----
+function addTestResult(ok, msg){ if(!testList) return; const li=document.createElement('li'); li.className= ok?'test-pass':'test-fail'; li.textContent=(ok?'✓ ':'✗ ')+msg; testList.appendChild(li); }
+function runTests(){
+  if(!testPanel || !testList) return; testPanel.classList.add('show');
+  // 1. 牌庫數量
+  addTestResult(DECK.length===78, 'DECK 應為 78 張');
+  // 2. joinLines 換行正確（應用 \\n）
+  addTestResult(joinLines(['a','b'])==='a\nb', 'joinLines 應以\\n連接');
+  // 3. pickThree 回傳三張
+  const a = pickThree({seedText:'seed-xyz', allowReverse:true});
+  addTestResult(Array.isArray(a) && a.length===3, 'pickThree 應回傳 3 張');
+  // 4. 同種子必須可重現
+  const b = pickThree({seedText:'seed-xyz', allowReverse:true});
+  const same = a.every((it, i)=> it.name===b[i].name && it.reversed===b[i].reversed);
+  addTestResult(same, 'pickThree 同種子結果應一致');
+  // 5. renderSpread 產生牌背
+  const before = spreadEl.children.length; initSpread(); const after = spreadEl.children.length;
+  addTestResult(after>=36, 'renderSpread 應產生大量牌背（>=36）');
+  // 6. updateResults 三張後可複製
+  picks = a.slice(0,3); updateResults();
+  addTestResult(copyBtn.disabled===false && copyBtn1L.disabled===false, '選滿三張時兩種複製皆應啟用');
+  // 7. 未滿三張時應禁用複製
+  picks = a.slice(0,2); updateResults();
+  addTestResult(copyBtn.disabled===true && copyBtn1L.disabled===true, '未滿三張時兩種複製皆應禁用');
+  // 8. joinLines 邊界：空陣列與單元素
+  addTestResult(joinLines([])==='', 'joinLines([]) 應回傳空字串');
+  addTestResult(joinLines(['only'])==='only', 'joinLines([only]) 應回傳同一元素');
+  // 9. 密集橫排切換
+  const origDense = spreadEl.classList.contains('dense');
+  denseToggleEl.checked = false; applyDenseMode(); const offOk = !spreadEl.classList.contains('dense');
+  denseToggleEl.checked = true; applyDenseMode(); const onOk = spreadEl.classList.contains('dense');
+  addTestResult(offOk && onOk, '密集橫排開關應正確切換 dense 類別');
+  // 10. 牌背尺寸變更
+  sizeRangeEl.value = '88'; applyTileSize();
+  const w = getComputedStyle(document.documentElement).getPropertyValue('--tileW').trim();
+  addTestResult(w==='88px', '尺寸滑桿應更新 --tileW 為 88px');
+  // 11. 攤牌重疊開關
+  fanToggleEl.checked = false; applyFanMode(); const fanOff = !spreadEl.classList.contains('fan');
+  fanToggleEl.checked = true; applyFanMode(); const fanOn = spreadEl.classList.contains('fan');
+  addTestResult(fanOff && fanOn, '攤牌重疊開關應正確切換 fan 類別');
+  // 12. 重疊滑桿更新 CSS 變數
+  overlapRangeEl.value = '48'; applyOverlap();
+  const ml = getComputedStyle(document.documentElement).getPropertyValue('--fanML').trim();
+  addTestResult(ml==='-48px', '重疊滑桿應更新 --fanML 為 -48px');
+  // 13. 幾何檢查：重疊時相鄰卡片左偏移差 < 卡片寬度
+  initSpread(); const t0 = spreadEl.children[0]; const t1 = spreadEl.children[1];
+  if(t0 && t1){ const dx = t1.offsetLeft - t0.offsetLeft; const tw = parseInt(getComputedStyle(t0).width, 10) || 72; addTestResult(dx < tw, '攤牌時相鄰卡片應有重疊 (Δx < tileW)'); } else { addTestResult(false, '找不到足夠的卡片以驗證重疊'); }
+  // 14. 手機模式：資料屬性應切為 1 欄
+  simulateMobileForTest(); addTestResult(layoutGrid && layoutGrid.dataset.columns==='1', '手機模式時設定面板應堆疊為 1 欄');
+  // 15. 手機模式：卡片寬度應不大於 68px（根據變數）
+  const t = document.createElement('div'); t.className='tile'; document.body.appendChild(t); const tw2 = parseInt(getComputedStyle(t).width,10); document.body.removeChild(t);
+  addTestResult(tw2<=68, '手機模式下 --tileW 應縮小 (<=68px)');
+  // 16. 單行文本不應含換行且含分隔符
+  window._last = { question:'單行測試', three:[{name:'0 The Fool / 愚者',reversed:false},{name:'I The Magus / 魔術師',reversed:true},{name:'II The Priestess / 女祭司',reversed:false}] };
+  const one = buildResultOneLine();
+  addTestResult(!one.includes('\n') && one.includes('｜'), '單行文本不應含換行且應含「｜」分隔');
+  // 17. 卡片吸附切換
+  snapToggleEl.checked=false; applySnapMode(); const snapOff=!spreadEl.classList.contains('snap');
+  snapToggleEl.checked=true; applySnapMode(); const snapOn=spreadEl.classList.contains('snap');
+  addTestResult(snapOff && snapOn, '卡片吸附開關應正確切換 snap 類別');
+  // 18. 影像路徑（大牌）
+  applyImgSetting(); IMG.enabled = true; IMG.base = '/x';
+  addTestResult(imgSrcFor(MAJOR[0])==='/x/major/00.jpg', '影像路徑（大牌）應為 /x/major/00.jpg');
+  // 19. 影像路徑（小牌）
+  addTestResult(imgSrcFor('Ace/一 of Wands/權杖')==='/x/minor/wands/ace.jpg', '影像路徑（小牌）應為 /x/minor/wands/ace.jpg');
+  // 20. 結果區應渲染圖片
+  picks = [{name:MAJOR[0],reversed:false},{name:'Ace/一 of Wands/權杖',reversed:true},{name:'Two/二 of Cups/聖杯',reversed:false}];
+  updateResults();
+  const imgs = cardsEl.querySelectorAll('img.result-img');
+  addTestResult(imgs.length>=1, '結果卡片應包含牌面圖 <img>');
+  // 21. 逆位圖片應有 revimg 類別
+  const revHas = [...imgs].some(img=> img.classList.contains('revimg'));
+  addTestResult(revHas, '逆位圖片應套用 revimg（180° 旋轉）');
+}
+
+// ---- 響應式調整 ----
+function updateResponsiveState(){
+  const mobile = window.matchMedia('(max-width: 640px)').matches;
+  document.body.classList.toggle('is-mobile', mobile);
+  if(layoutGrid){ layoutGrid.dataset.columns = mobile ? '1' : '2'; }
+  // 小螢幕預設更密集
+  if(mobile){
+    if(sizeRangeEl && parseInt(sizeRangeEl.value,10)>72){ sizeRangeEl.value = '68'; applyTileSize(); }
+    if(overlapRangeEl && parseInt(overlapRangeEl.value,10)<36){ overlapRangeEl.value = '36'; applyOverlap(); }
+  }
+}
+
+// 減少 resize 抖動
+let _rzTimer; window.addEventListener('resize', ()=>{ clearTimeout(_rzTimer); _rzTimer=setTimeout(updateResponsiveState,100); });
+
+// 測試用：強制模擬手機
+function simulateMobileForTest(){
+  document.body.classList.add('is-mobile');
+  if(layoutGrid){ layoutGrid.dataset.columns='1'; }
+  if(sizeRangeEl){ sizeRangeEl.value='68'; applyTileSize(); }
+  if(overlapRangeEl){ overlapRangeEl.value='36'; applyOverlap(); }
+}
+
+// 初始化
+deckCount.textContent = `牌組：${DECK.length} 張`;
+drawReset();
+updateResponsiveState();
+applyImgSetting();
+
+// 監聽 UI
+[denseToggleEl, fanToggleEl, snapToggleEl].forEach(el=>{ el?.addEventListener('change', ()=>{ applyDenseMode(); applyFanMode(); applySnapMode(); }); });
+sizeRangeEl?.addEventListener('input', applyTileSize);
+overlapRangeEl?.addEventListener('input', applyOverlap);
+
+// 啟動測試（僅在 URL 帶有 test=1）
+if(new URL(location.href).searchParams.get('test')==='1'){ runTests(); }
 </script>
 </body>
 </html>
