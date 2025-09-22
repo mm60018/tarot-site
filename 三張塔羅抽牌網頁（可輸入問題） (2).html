@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>三張塔羅抽牌｜輸入問題 → 抽牌</title>
+  <style>
+    body { margin:0; font-family:system-ui; background:#0b0f13; color:#fff; }
+    .wrap { max-width:900px; margin:0 auto; padding:20px; }
+    .cards { display:flex; justify-content:center; gap:12px; margin-top:16px; }
+    .card { background:#111; border:1px solid #333; border-radius:10px; padding:6px; width:30%; text-align:center; }
+    img { max-width:100%; border-radius:8px; }
+    .rev { color:#ff8a8a; font-size:14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>三張塔羅抽牌</h1>
+    <textarea id="question" placeholder="輸入你的問題" style="width:100%;min-height:60px;"></textarea>
+    <br><br>
+    <button id="drawBtn">抽三張</button>
+    <button id="copyBtn" disabled>複製結果</button>
+    <div class="cards" id="cards"></div>
+  </div>
+
+<script>
+const DECK = [
+  '00-fool','01-magus','02-priestess','03-empress','04-emperor','05-hierophant','06-lovers','07-chariot','08-adjustment','09-hermit','10-fortune','11-lust','12-hangedman','13-death','14-art','15-devil','16-tower','17-star','18-moon','19-sun','20-aeon','21-universe',
+  'wands-ace','wands-two','wands-three','wands-four','wands-five','wands-six','wands-seven','wands-eight','wands-nine','wands-ten','wands-knight','wands-queen','wands-prince','wands-princess',
+  'cups-ace','cups-two','cups-three','cups-four','cups-five','cups-six','cups-seven','cups-eight','cups-nine','cups-ten','cups-knight','cups-queen','cups-prince','cups-princess',
+  'swords-ace','swords-two','swords-three','swords-four','swords-five','swords-six','swords-seven','swords-eight','swords-nine','swords-ten','swords-knight','swords-queen','swords-prince','swords-princess',
+  'disks-ace','disks-two','disks-three','disks-four','disks-five','disks-six','disks-seven','disks-eight','disks-nine','disks-ten','disks-knight','disks-queen','disks-prince','disks-princess'
+];
+
+function pickThree(){
+  const tmp=[...DECK];
+  const res=[];
+  for(let i=0;i<3;i++){
+    const idx=Math.floor(Math.random()*tmp.length);
+    const name=tmp.splice(idx,1)[0];
+    const reversed=Math.random()<0.5;
+    res.push({name,reversed});
+  }
+  return res;
+}
+
+function renderResult(cards){
+  const container=document.getElementById('cards');
+  container.innerHTML='';
+  cards.forEach(c=>{
+    const div=document.createElement('div');
+    div.className='card';
+    const img=document.createElement('img');
+    img.src=`thoth/${c.name}.jpg`;
+    img.alt=c.name;
+    div.appendChild(img);
+    if(c.reversed){
+      const span=document.createElement('div');
+      span.className='rev';
+      span.textContent='逆位';
+      div.appendChild(span);
+    }
+    container.appendChild(div);
+  });
+}
+
+const drawBtn=document.getElementById('drawBtn');
+const copyBtn=document.getElementById('copyBtn');
+let lastDraw=null;
+
+drawBtn.addEventListener('click',()=>{
+  lastDraw=pickThree();
+  renderResult(lastDraw);
+  copyBtn.disabled=false;
+});
+
+copyBtn.addEventListener('click',async()=>{
+  if(!lastDraw) return;
+  const q=document.getElementById('question').value.trim();
+  let lines=[];
+  lines.push('【三張塔羅抽牌】');
+  lines.push('問題：'+(q||'（未填）'));
+  lastDraw.forEach((c,i)=>{
+    lines.push(`第${i+1}張：${c.name}${c.reversed?'（逆位）':''}`);
+  });
+  const txt=lines.join('\n');
+  try{await navigator.clipboard.writeText(txt);alert('已複製');}catch(e){alert('複製失敗');}
+});
+</script>
+</body>
+</html>
